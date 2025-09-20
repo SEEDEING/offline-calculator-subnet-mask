@@ -1,0 +1,44 @@
+#Android GUI.py
+
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivy.uix.button import Button
+from main import subnet_info
+
+class SubnetApp(App):
+    def build(self):
+        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        self.ip_input = TextInput(hint_text='Enter IP address', multiline=False)
+        layout.add_widget(self.ip_input)
+        self.prefix_input = TextInput(hint_text='Enter prefix length', multiline=False)
+        layout.add_widget(self.prefix_input)
+        btn = Button(text='Calculate Subnet')
+        btn.bind(on_press=self.calculate)
+        layout.add_widget(btn)
+        self.output_label = Label(text='', halign='left', valign='top')
+        layout.add_widget(self.output_label)
+        return layout
+
+    def calculate(self, instance):
+        ip = self.ip_input.text.strip()
+        prefix_str = self.prefix_input.text.strip()
+        if not prefix_str.isdigit():
+            self.output_label.text = "Error: Prefix must be a number 0-32."
+            return
+        prefix = int(prefix_str)
+        if prefix < 0 or prefix > 32:
+            self.output_label.text = "Error: Prefix must be 0-32."
+            return
+        try:
+            result = subnet_info(ip, prefix)
+            text = "--- All Subnet Calculation Result ---\n"
+            for k, v in result.items():
+                text += f"{k}: {v}\n"
+            self.output_label.text = text
+        except Exception as e:
+            self.output_label.text = f"Error: Invalid IP or unexpected error: {e}"
+
+if __name__ == "__main__":
+    SubnetApp().run()

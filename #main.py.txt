@@ -1,0 +1,130 @@
+#main.py
+
+import ipaddress
+
+# 函数：根据 IP 第一段自动识别 Class
+def get_class(ip: str) -> str:
+    first_octet = int(ip.split(".")[0])
+    if 0 <= first_octet <= 127:
+        return "A"
+    elif 128 <= first_octet <= 191:
+        return "B"
+    elif 192 <= first_octet <= 223:
+        return "C"
+    elif 224 <= first_octet <= 239:
+        return "D (Multicast)"
+    elif 240 <= first_octet <= 255:
+        return "E (Reserved)"
+    else:
+        return "Unknown"
+
+# 函数：计算子网信息，并返回字典
+def subnet_info(ip: str, prefix: int) -> dict:
+    network = ipaddress.ip_network(f"{ip}/{prefix}", strict=False)
+    ip_class = get_class(ip)
+
+    info = {
+        "Network Class": ip_class,
+        "IP Type": "Private" if network.is_private else "Public",
+        "IP Address": str(network.network_address),
+        "Network Address": str(network.network_address),
+        "Subnet Mask": str(network.netmask),
+        "Broadcast Address": str(network.broadcast_address),
+        "Wildcard Mask": str(network.hostmask),
+        "Usable Hosts": network.num_addresses - (2 if network.prefixlen < 31 else 0),
+        "Prefix Length": prefix,
+    }
+
+    # 可用主机范围
+    if prefix < 31:
+        host_range = f"{network[1]} - {network[-2]}"
+        info["Host Range"] = host_range
+
+    else:
+        info["Host Range"] = "N/A"
+
+    return info
+
+# 函数：打印子网结果
+def print_result(result, ip, prefix):
+    print("\n--- All Subnet Calculation Result ---")
+    for k, v in result.items():
+        print(f"{k}: {v}")
+
+    # 父网络（classful）
+    first_octet = int(ip.split(".")[0])
+    if first_octet <= 127:
+        classful_prefix = 8
+    elif first_octet <= 191:
+        classful_prefix = 16
+    elif first_octet <= 223:
+        classful_prefix = 24
+    else:
+        classful_prefix = prefix  # D/E 类直接用输入前缀
+
+    classful_network = ipaddress.ip_network(f"{ip}/{classful_prefix}", strict=False)
+    subnets = list(classful_network.subnets(new_prefix=prefix))
+
+    print("\n--- Subnet Calculation Table ---")
+    print(f"\nTable {len(subnets)} of the /{prefix} Networks for {classful_network.network_address}.*\n")
+
+    # 表格头
+    print("-" * 76)
+    print("|{:<16}|{:<33}|{:<23}|".format("Network Address", "Usable Host Range", "Broadcast Address"))
+    print("|" + "-" * 74 + "|")
+
+    # 表格内容
+    for subnet in subnets:
+        if subnet.prefixlen < 31:
+            host_range = f"{subnet[1]} - {subnet[-2]}"
+        else:
+            host_range = "N/A"
+        print("|{:<16}|{:<33}|{:<23}|".format(
+            str(subnet.network_address),
+            host_range,
+            str(subnet.broadcast_address)
+        ))
+
+    # 表格尾
+    print("-" * 76)
+
+# 主程序
+if __name__ == "__main__":
+    while True:
+        try:
+            ip = input("Enter IP address (e.g. 192.168.1.0): ").strip()
+            prefix_input = input("Enter prefix length (0-32): ").strip()
+
+            # 错误1：前缀不是数字
+            if not prefix_input.isdigit():
+                print("Error: Prefix length must be a number between 0 and 32.")
+                print("Please enter the values again.\n")
+                continue
+
+            prefix = int(prefix_input)
+
+            # 错误2：前缀超出范围
+            if prefix < 0 or prefix > 32:
+                print("Error: Prefix length must be between 0 and 32.")
+                print("Please enter the values again.\n")
+                continue
+
+            # 正常计算
+            result = subnet_info(ip, prefix)
+            print_result(result, ip, prefix)
+
+        # 错误3：无效 IP
+        except ipaddress.AddressValueError:
+            print("Error: Invalid IP address format. Please try again.\n")
+            continue
+
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            print("Please enter the values again.\n")
+            continue
+
+        # 循环选择
+        choice = input("Do you want to calculate again? (1 = Yes, 2 = Exit): ").strip()
+        if choice == "2":
+            print("Exiting program. Goodbye!")
+            break
