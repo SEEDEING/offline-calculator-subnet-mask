@@ -1,4 +1,4 @@
-# offline-calculator-subnet-mask
+# offline-IP Subnet Calculator
 can use at offline. To using calculator subnet mask
 
 print out UI
